@@ -6,4 +6,7 @@ result : 19 of 27 failed
 
 Day 2015-4-23 pass priority-change
 Day 2015-4-23 pass priority-preempt
-result : 16 of 27
+result : 16 of 27 failed
+
+Day 2015-5-10 pass priority-donate-*
+result : 8 of 27 failed

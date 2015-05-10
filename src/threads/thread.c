@@ -350,12 +350,38 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-	thread_current ()->priority = new_priority;
-	struct list_elem* e;
-	e = list_begin(&ready_list);
-	if(new_priority<(list_entry(e,struct thread,elem))->priority){
+	//重定向thread_set_priority函数
+	thread_set_priority_fixed(thread_current(), new_priority, true);
+}
+
+void 
+thread_set_priority_fixed(struct thread *current_thread, int new_priority, bool nest){
+	enum intr_level old_level;
+	old_level = intr_disable();
+	//没被捐赠过的同时改变两个变量
+	if(current_thread->donated == false){
+		current_thread->priority = current_thread->old_priority = new_priority;
+	}
+	//正在被捐赠
+	else if(nest){
+		//捐赠过的，且新优先级比当前优先级还小，更新旧优先级
+		if(current_thread->priority > new_priority){
+			current_thread->old_priority = new_priority;
+		}
+		//捐赠过的，更新当前优先级
+		else{
+			current_thread->priority = new_priority;
+		}
+	}
+	//捐赠过的但取消捐赠状态，更新当前优先级
+	else{
+		current_thread->priority = new_priority;
+	}
+	//就绪队列中优先级比新设置的优先级低，则让出CPU
+	if(list_entry(list_begin(&ready_list), struct thread, elem)->priority > new_priority){
 		thread_yield();
 	}
+	intr_set_level(old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -479,7 +505,13 @@ init_thread (struct thread *t, const char *name, int priority)
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
 	t->stack = (uint8_t *) t + PGSIZE;
-	t->priority = priority;
+
+	//t->priority = priority;
+	t->priority = t->old_priority = priority;
+	t->donated = false;
+	t->blocked = NULL;
+	list_init(&t->locks);
+
 	t->magic = THREAD_MAGIC;
 	list_push_back (&all_list, &t->allelem);
 }
@@ -595,7 +627,7 @@ allocate_tid (void)
 }
 
 void 
-checkInvoke(struct thread* t, void* aux UNUSED){
+checkInvoke(struct thread* t, void* aux){
 		if(t->status == THREAD_BLOCKED && t->tick_blocked > 0){
 				t->tick_blocked--;
 				if(t->tick_blocked == 0){
@@ -604,12 +636,17 @@ checkInvoke(struct thread* t, void* aux UNUSED){
 		}
 }
 
-static bool 
+bool 
 priority_less(const struct list_elem *a, const struct list_elem *b, void *aux){
 		struct thread *a_thread, *b_thread;
 		a_thread = list_entry(a, struct thread, elem);
 		b_thread = list_entry(b, struct thread, elem);
 		return (a_thread->priority > b_thread->priority);
+}
+
+bool 
+cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux){
+	return (list_entry(a,struct thread,elem)->priority > list_entry(b,struct thread,elem)->priority);
 }
 
 
