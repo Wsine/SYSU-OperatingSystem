@@ -90,11 +90,14 @@ struct thread
 		int priority;                       /* Priority. */
 		struct list_elem allelem;           /* List element for all threads list. */
 
-		int tick_blocked;
+		int ticks_blocked;
 		int old_priority;
 		struct list locks;
 		bool donated;
 		struct lock *blocked;
+
+		int nice;
+		int64_t recent_cpu;
 
 		/* Shared between thread.c and synch.c. */
 		struct list_elem elem;              /* List element. */
@@ -149,5 +152,12 @@ bool priority_less(const struct list_elem *a, const struct list_elem *b, void *a
 
 void thread_set_priority_fixed(struct thread *current_thread, int new_priority, bool nest);
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+
+int64_t get_ready_threads();
+void renew_priority(struct thread* t);
+void renew_recent_cpu(struct thread* t);
+void renew_load_avg(void);
+void renew_all_priority();
+void thread_all_renew(void);
 
 #endif /* threads/thread.h */

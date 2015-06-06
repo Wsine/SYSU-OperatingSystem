@@ -10,3 +10,6 @@ result : 16 of 27 failed
 
 Day 2015-5-10 pass priority-donate-*
 result : 8 of 27 failed
+
+Day 2015-5-29 pass all-thread-test
+result : All pass
